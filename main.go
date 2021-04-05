@@ -2,19 +2,33 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
+	"io"
+	"log"
 	"net/http"
+	"os/exec"
+
+	"github.com/julienschmidt/httprouter"
 )
 
+func getCommandOutput(command string, arguments ...string) string {
+	out, _ := exec.Command(command, arguments...).Output()
+	return string(out)
+}
+
+func goVersion(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	response := getCommandOutput("/usr/local/go/bin", "version")
+	io.WriteString(w, response)
+	return
+}
+
+func getFileContent(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	fmt.Fprintf(w, getCommandOutput("/bin/cat", params.ByName("name")))
+}
+
 func main() {
-	newMux := http.NewServeMux()
-	newMux.HandleFunc("/randomFloat", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, rand.Float64())
-	})
+	router := httprouter.New()
 
-	newMux.HandleFunc("/randomInt", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, rand.Intn(100))
-	})
-
-	http.ListenAndServe(":8000", newMux)
+	router.GET("/api/v1/go-version", goVersion)
+	router.GET("/api/v1/show-file/:name", getFileContent)
+	log.Fatal(http.ListenAndServe(":8000", router))
 }
