@@ -64,6 +64,7 @@ func (t TrainResource) getTrain(request *restful.Request, response *restful.Resp
 	}
 }
 
+//POST http://localhost:8000/v1/trains
 func (t TrainResource) createTrain(request *restful.Request, response *restful.Response) {
 	log.Println(request.Request.Body)
 	decoder := json.NewDecoder(request.Request.Body)
