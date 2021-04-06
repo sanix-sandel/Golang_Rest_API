@@ -2,22 +2,24 @@ package main
 
 import (
 	"log"
-	"net/http"
-	"os"
-
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
+	"net/rpc"
 )
 
-func handle(w http.ResponseWriter, r *http.Request) {
-	log.Println("Processing request!")
-	w.Write([]byte("OK"))
-	log.Println("Finished processing request")
+type Args struct {
 }
 
 func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/", handle)
-	loggedRouter := handlers.LoggingHandler(os.Stdout, r)
-	http.ListenAndServe(":8000", loggedRouter)
+	var reply int64
+	args := Args{}
+
+	client, err := rpc.DialHTTP("tcp", "localhost"+":1234")
+	if err != nil {
+		log.Fatal("dialing:", err)
+	}
+	err = client.Call("TimeServer.GiveServerTime", args, &reply)
+
+	if err != nil {
+		log.Fatal("arith error:", err)
+	}
+	log.Printf("%d", reply)
 }
