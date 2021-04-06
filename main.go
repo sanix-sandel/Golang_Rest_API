@@ -1,25 +1,56 @@
 package main
 
 import (
-	"fmt"
-	"io"
-	"net/http"
-	"time"
+	"database/sql"
+	"log"
 
-	"github.com/emicklei/go-restful"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-func pingTime(req *restful.Request, resp *restful.Response) {
-	//Write to the response
-	io.WriteString(resp, fmt.Sprintf("%s", time.Now()))
+type Book struct {
+	id     int
+	name   string
+	author string
+}
+
+func dbOperations(db *sql.DB) {
+	// Create
+	statement, _ := db.Prepare("INSERT INTO books (name, author, isbn) VALUES (?, ?, ?)")
+	//This is to avoid any raw strings being executed by the database engine
+	statement.Exec("A Tale of Two Cities", "Charles Dickens", 140430547)
+
+	log.Println("Inserted the book into database!")
+	// Read
+	rows, _ := db.Query("SELECT id, name, author FROM books")
+	var tempBook Book
+	for rows.Next() {
+		rows.Scan(&tempBook.id, &tempBook.name, &tempBook.author)
+		log.Printf("ID:%d, Book:%s, Author:%s\n", tempBook.id, tempBook.name, tempBook.author)
+	}
+	// Update
+	statement, _ = db.Prepare("update books set name=? where id=?")
+	statement.Exec("The Tale of Two Cities", 1)
+	log.Println("Successfully updated the book in database!")
+
+	//Delete
+	statement, _ = db.Prepare("delete from books where id=?")
+	statement.Exec(1)
+	log.Println("Successfully deleted the book in database!")
 }
 
 func main() {
-	//Create a web service
-	webservice := new(restful.WebService)
-	//Create a route and attach it to handler in the service
-	webservice.Route(webservice.GET("/ping").To(pingTime))
-	//add the service to application
-	restful.Add(webservice)
-	http.ListenAndServe(":8000", nil)
+	db, err := sql.Open("sqlite3", "./books.db")
+	if err != nil {
+		log.Println(err)
+	}
+
+	//Create table
+	statement, err := db.Prepare("CREATE TABLE IF NOT EXISTS books (id INTEGER PRIMARY KEY, isbn INTEGER, author VARCHAR(64), name VARCHAR(64) NULL)")
+	if err != nil {
+		log.Println("Error in creating table ")
+	} else {
+		log.Println("Successfully created table books!")
+	}
+	statement.Exec()
+	dbOperations(db)
 }
