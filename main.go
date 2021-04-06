@@ -2,31 +2,24 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"time"
-
-	"github.com/gorilla/mux"
 )
 
-//QueryHandler handles the given query parameters
-func QueryHandler(w http.ResponseWriter, r *http.Request) {
-	queryParams := r.URL.Query()
+func middleware(originalHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Executing middleware before request phase!")
+		originalHandler.ServeHTTP(w, r)
+		fmt.Println("Exceuting middleware after response phase !")
+	})
+}
 
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Got parameter id:%s!\n", queryParams["id"][0])
-	fmt.Fprintf(w, "Got parameter category:%s!", queryParams["category"][0])
+func handle(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Executing mainHandler....")
+	w.Write([]byte("OK"))
 }
 
 func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/articles", QueryHandler)
-	srv := &http.Server{
-		Handler:      r,
-		Addr:         "127.0.0.1:8000",
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
-	}
-
-	log.Fatal(srv.ListenAndServe())
+	originalHandler := http.HandlerFunc(handle)
+	http.Handle("/", middleware(originalHandler))
+	http.ListenAndServe(":8000", nil)
 }
